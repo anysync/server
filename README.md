@@ -40,5 +40,5 @@ The key is used for encrypting the file key, auth key, access token and public/p
 
 The access token is saved to a local file called "access.keys", which is unecrypted. This file is for authenticating the user, similar to the private key file used by SSH client for passwordless login.
 
-All files will be encrypted by the key using [AES-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode "AES-GCM"), then encrypted file will be uploaded to the cloud.
+All files will be encrypted by the key using 256-bit [AES-GCM](https://en.wikipedia.org/wiki/Galois/Counter_Mode "AES-GCM"), then encrypted file will be uploaded to the cloud.
 
