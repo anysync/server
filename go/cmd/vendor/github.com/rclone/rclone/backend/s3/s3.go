@@ -1267,6 +1267,7 @@ func NewFs(name, root string, m configmap.Mapper) (fs.Fs, error) {
 		SetTier:           true,
 		GetTier:           true,
 	}).Fill(f)
+	/*zyb
 	if f.rootBucket != "" && f.rootDirectory != "" {
 		// Check to see if the object exists
 		encodedDirectory := f.opt.Enc.FromStandardPath(f.rootDirectory)
@@ -1288,6 +1289,7 @@ func NewFs(name, root string, m configmap.Mapper) (fs.Fs, error) {
 			return f, fs.ErrorIsFile
 		}
 	}
+	 */
 	// f.listMultipartUploads()
 	return f, nil
 }
