@@ -7,7 +7,6 @@
 package utils
 
 import (
-	"github.com/mholt/archiver"
 	"github.com/pierrec/lz4"
 
 	"archive/tar"
@@ -27,7 +26,44 @@ func CreateZip(folders []string, transformMap map[string]string, excludedExts []
 
 //The zip file must end with ".lz4"!
 func UnzipTo(zipFile, directory string) error {
-	err := archiver.Unarchive(zipFile, directory)
+	//err := archiver.Unarchive(zipFile, directory)
+	r, err := os.Open(zipFile)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	uncompressedStream := lz4.NewReader(r)
+	tarReader := tar.NewReader(uncompressedStream)
+	for true {
+		header, err := tarReader.Next()
+
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err;
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			_=os.MkdirAll(directory + "/" + header.Name, 0755)
+		case tar.TypeReg:
+			outFile, err := os.Create(directory + "/" + header.Name)
+			if err != nil {
+				return err;
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				return err;
+			}
+			outFile.Close()
+
+		default:
+			return err;
+		}
+
+	}
+
 	return err;
 }
 
