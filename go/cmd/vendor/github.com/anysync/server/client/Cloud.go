@@ -119,12 +119,30 @@ func CompressAndUpload(srcFile string, fileMeta *utils.FileMeta, deletes  *syncm
 	return nil
 }
 
+var compressMutex = utils.NewKmutext();// &sync.Mutex{}
+
 func doCompressAndUpload(i interface{})  {
 	j := i.(CompressJob)
+	hash := j.fileMeta.GetFileHash()
+	compressMutex.Lock(hash)
+	defer compressMutex.Unlock(hash)
+
 	hashPath := utils.HashToPath(j.fileMeta.GetFileHash())
 	finished := 0
 	base := j.srcFile[0 : len(j.srcFile)-4]
-	utils.Debug("Enter CompressAndUpload, remotes.size: ", len(j.fileMeta.GetRepository().Remote))
+
+	if v,ok:=j.deletes.Load(hash);ok{
+		j.fileMeta = v.(*utils.FileMeta)
+		h := j.fileMeta.GetFileHash();
+		if(len(j.ownerUserID) > 0){
+			h = j.fileMeta.GetFolderHash() + utils.DAT_SEPERATOR + h;
+		}
+		j.objects.Store(h, j.fileMeta)
+		utils.Debug("doCompressAndUpload.Already processed...", hash, "; src:", j.srcFile)
+		return
+	}
+
+	utils.Debug("Enter doCompressAndUpload, fileHash: ", j.fileMeta.GetFileHash())
 	encrypt := j.fileMeta.GetRepository().EncryptionLevel == 1
 	if(j.skipEncrypt){ encrypt = false}
 	for _, remote := range j.fileMeta.GetRepository().Remote {
@@ -143,12 +161,14 @@ func doCompressAndUpload(i interface{})  {
 		path :=  r + "objects/" + hashPath + utils.EXT_OBJ
 		utils.Debug("CompressAndUpload.path: ", path, "; remote.RemoteName: ", remote.Name, "; remote.T: ", remote.Type, "; remote.Root: ", remote.Root, ", encrytLevel:", encrypt)
 		if compressed, e, _ := CloudCopyLz4File(j.srcFile,  &path, remote, j.fileMeta, base, encrypt, j.skipCompress); e == nil {
+
 			p := CreatePath(j.fileMeta.GetRepository().EncryptionLevel, compressed, utils.META_PATH_STATE_NORMAL, remote.Name, path)
 			if j.fileMeta.P != "" {
 				j.fileMeta.P += utils.META_PATH_SEPERATOR + p
 			} else {
 				j.fileMeta.P = p
 			}
+			j.deletes.Store(hash, j.fileMeta)
 			utils.Debug("fileMeta.P: ", j.fileMeta.P)
 			finished++
 		}else{//error occurred
@@ -171,12 +191,13 @@ func doCompressAndUpload(i interface{})  {
 	} else if finished != len(j.fileMeta.GetRepository().Remote) {
 		j.fileMeta.SetIncomplete( 1)
 	} else if j.deletes != nil{ //no error
-		if(utils.FileExists(base + utils.EXT_LZ4)) {
-			j.deletes.Store(base+utils.EXT_LZ4, true)
-		}
-		if(utils.FileExists(base + utils.EXT_CZC)) {
-			j.deletes.Store(base+utils.EXT_CZC, true)
-		}
+		//if(utils.FileExists(base + utils.EXT_LZ4)) {
+		//	j.deletes.Store(base+utils.EXT_LZ4, true)
+		//}
+		//if(utils.FileExists(base + utils.EXT_CZC)) {
+		//	j.deletes.Store(filepath.Dir(base+utils.EXT_CZC), true)
+		//}
+		j.deletes.Store(filepath.Dir(base), true)
 	}
 
 	if j.fileMeta.GetIncomplete() == 0 {
@@ -432,7 +453,6 @@ func CloudUploadFile(srcFile string,  destFile * string, remote * utils.RemoteOb
 				utils.MkdirAll(dir);
 			}
 			utils.WriteString(dfile, srcFile)
-			utils.Debug("utils.Renamed src: ", srcFile, " ; to ", dfile)
 		}
 		if fileMeta.GetLastModified() != 0 {
 			utils.SetFileModTime(dfile, fileMeta.GetLastModified()) //set file mod time, so that future copy of the same file will be skipped by rclone (which check mod time and filesize to see if file has been uploaded to the cloud)
@@ -519,8 +539,8 @@ func GetFirstPathComponent(path string) (string, string) {
 
 //copy to a tmp file first, then rename the tmp file to dest file.
 func CopyObjectFromServerTo( destFile string, fileHash string) error {
-	utils.SendToLocal(utils.MSG_PREFIX + "To copy cloud file to " + destFile)
-	defer utils.SendToLocal(utils.MSG_PREFIX + "Copied cloud file to " + destFile)
+	//utils.SendToLocal(utils.MSG_PREFIX + "To copy cloud file to " + destFile)
+	//defer utils.SendToLocal(utils.MSG_PREFIX + "Copied cloud file to " + destFile)
 	subPath := utils.HashToPath(fileHash);
 	tmpFile := utils.GetTopTmpFolder() + utils.GenerateRandomHash()
 	obj := utils.GetTopObjectsFolder() + subPath + utils.EXT_OBJ
