@@ -441,7 +441,7 @@ func (r *Request) Sign() error {
 
 			signed := string(response.Data["=url"])
 			r.HTTPRequest.URL, _ = url.ParseRequestURI(signed);
-			//utils.Debug("signedURL:", signed + "\nmethod:", r.HTTPRequest.Method)
+			utils.Debug("signedURL:", signed + "\nmethod:", r.HTTPRequest.Method)
 
 			h := make(map[string][]string)
 			for k, v := range response.Data {
@@ -572,7 +572,7 @@ func (r *Request) Send() error {
 		if err := r.sendRequest(); err == nil {
 			return nil
 		}else{
-			utils.Warn("sendrequest , request:", r.HTTPRequest.URL.String() , "; error:", err)
+			utils.Warn("sendrequest error:", err)
 		}
 		r.Handlers.Retry.Run(r)
 		r.Handlers.AfterRetry.Run(r)

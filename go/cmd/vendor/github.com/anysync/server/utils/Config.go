@@ -479,6 +479,9 @@ func LoadConfigFile(configFile string) (*Config, error) {
 }
 
 func GetServerConfigDir() (string, error) {
+	if(IS_MAIN_SERVER_SIDE && IsWindows()) {
+		return filepath.Join(os.Getenv("PROGRAMDATA") , "AnySync"), nil
+	}
 	var configDirLocation string
 
 	homeDir, err := homedir.Dir()
@@ -567,7 +570,12 @@ func LoadAppParams() * AppParams{
 	if IS_MAIN_SERVER_SIDE {
 		rcFile = "server.rc"
 	}
-	paramsFile := filepath.Join(paramsDir, rcFile);
+	var paramsFile string;
+	if(IS_MAIN_SERVER_SIDE && IsWindows()) {
+		paramsFile = filepath.Join(os.Getenv("PROGRAMDATA"),"AnySync", rcFile)
+	}else {
+		paramsFile = filepath.Join(paramsDir, rcFile);
+	}
 	if !FileExists(paramsFile) {
 		dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 		if err != nil {

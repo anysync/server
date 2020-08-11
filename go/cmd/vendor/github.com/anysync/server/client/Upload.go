@@ -19,7 +19,6 @@ import (
 
 
 func (rescan Rescan) uploadToCloud(repo * utils.Repository, clientChanges []*utils.ModifiedFolderExt, objects *syncmap.Map,  deletes  *syncmap.Map, shareState int32)error {
-	//todo: sort files by RemoteName to assure consistency of pack files
 	packFolder := utils.GetTopTmpFolder() + "/pack/" + repo.Name + "/"
 	if utils.FileExists(packFolder) {
 		utils.Mkdir(packFolder)
@@ -27,18 +26,17 @@ func (rescan Rescan) uploadToCloud(repo * utils.Repository, clientChanges []*uti
 	var packSize int64 = 0
 	var fileParts []* utils.FileMeta
 	for _, folder := range clientChanges {
-		spath := utils.HashToPath(folder.FolderHash)
-		baseFileName := utils.GetTopTreeFolder() + spath
-		binFileName := baseFileName + ".bin"
 		hasImage := false;
-		for index, row := range folder.GetRows() {
-			pSize, filePart := uploadProcessFile(row, folder, objects, binFileName, index,  deletes, repo.HashSuffix)
+		for _, row := range folder.GetRows() {
+			var indexBinRow utils.IndexBinRow
+			indexBinRow.ReadBytes(row.Row, 0)
+			objFilePath := utils.GetTopObjectsFolder() + utils.HashToPath(indexBinRow.ToHashString()) + utils.EXT_OBJ
+			if IsImageFile(objFilePath, false) {
+				hasImage = true;
+			}
+			pSize, filePart := uploadProcessFile(&indexBinRow, folder, objects, deletes)
 			if pSize > 0 {
 				packSize += pSize
-				objFilePath := utils.GetTopObjectsFolder() + utils.HashToPath(filePart.GetFileHash()) + utils.EXT_OBJ
-				if IsImageFile(objFilePath, false){
-					hasImage = true;
-				}
 			}
 			if filePart != nil {
 				filePart.SetFolderHash(folder.FolderHash)
@@ -102,8 +100,7 @@ func (rescan Rescan) uploadToCloud(repo * utils.Repository, clientChanges []*uti
 	return  nil // everything ok, send nil, error if not
 }
 
-func uploadProcessFile(row *utils.ModifiedRow, folder *utils.ModifiedFolderExt, objects *syncmap.Map, binFileName string,
-	index uint32,  deletes *syncmap.Map, hashSuffix string) (int64, *utils.FileMeta) {
+func uploadProcessFile(row *utils.IndexBinRow, folder *utils.ModifiedFolderExt, objects *syncmap.Map, deletes *syncmap.Map) (int64, *utils.FileMeta) {
 	opMode := row.OperationMode
 	var ret int64
 	var fileHash string
@@ -113,9 +110,9 @@ func uploadProcessFile(row *utils.ModifiedRow, folder *utils.ModifiedFolderExt, 
 		return 0, nil
 	}
 
-	var indexBinRow utils.IndexBinRow
-	indexBinRow.ReadBytes(row.Row, 0)
-	fileHash = indexBinRow.ToHashString()
+	//var indexBinRow utils.IndexBinRow
+	//indexBinRow.ReadBytes(row.Row, 0)
+	fileHash = row.ToHashString()
 	//utils.Debugf("BinFileName:%s, Index:%d, FileHash:%s\n", BinFileName, Index, FileHash);
 	hPath := utils.HashToPath(fileHash)
 	fullHashPath := hPath + utils.EXT_OBJ
@@ -124,11 +121,11 @@ func uploadProcessFile(row *utils.ModifiedRow, folder *utils.ModifiedFolderExt, 
 	if !utils.FileExists(objFilePath) {
 		return ret, filePart
 	}else{
-		deletes.Store(objFilePath, true);
+		deletes.Store(filepath.Dir(objFilePath), true);
 	}
 
 	//var jsonText string
-	s := row.GetIndexBinRow().FileSize
+	s := row.FileSize
 	meta, _ := utils.GetDatObjectAndContent(fileHash)
 	if meta != nil {// utils.FileExists(datFile) {
 		utils.Debugf("datFile already exists: %s\n", fileHash)
@@ -143,7 +140,7 @@ func uploadProcessFile(row *utils.ModifiedRow, folder *utils.ModifiedFolderExt, 
 			filePart = utils.NewFileMeta(utils.FILE_META_TYPE_REGULAR, objFilePath, 0, s, fileHash)
 			ret = s;
 			//filePart, ret =  appendToPackFile(packObjPath, objFilePath, s, fileHash)
-			filePart.SetLastModified( indexBinRow.LastModified)
+			filePart.SetLastModified( row.LastModified)
 		} else if huge { //needs chunking
 			//oldBinRow := GetRowAt(BinFileName, Index);
 			utils.SendToLocal(utils.MSG_PREFIX + "To split file: " + base)
@@ -190,7 +187,7 @@ func uploadProcessFile(row *utils.ModifiedRow, folder *utils.ModifiedFolderExt, 
 			fileMeta = utils.NewFileMeta(mType, "", 0, s, fileHash) // createJsonTextForType(fileHash, s, mType); //string(Bytes);
 			//}
 			if s > 0 {
-				setFileMeta(fileMeta, "", folder.Repository, indexBinRow.LastModified)
+				setFileMeta(fileMeta, "", folder.Repository, row.LastModified)
 				//if err:=CloudCopyLz4File(objFilePath, fileMeta.P, encrypt); err != nil {
 				_ = CompressAndUpload(objFilePath, fileMeta,deletes, false, false, "", objects);
 			}

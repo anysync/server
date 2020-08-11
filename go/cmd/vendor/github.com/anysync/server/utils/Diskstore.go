@@ -55,6 +55,9 @@ func clientInit(){
 	if IS_MAIN_SERVER_SIDE {
 		return;
 	}
+	if(GetAppHome() == ""){
+		return;//not ready yet
+	}
 	if(namesdb != nil){
 		return;
 	}

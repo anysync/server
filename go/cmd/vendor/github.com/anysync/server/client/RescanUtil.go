@@ -25,6 +25,7 @@ import (
 
 func InitClient() {
 	utils.InitHashSuffix()
+	RcloneInit()
 }
 func init(){
 	utils.SPECIAL_CHARS = make(map[byte]byte)
@@ -1224,7 +1225,15 @@ func  checkFolderChanges(p *ants.PoolWithFunc, wg * sync.WaitGroup, changedDirs,
 				continue
 			}
 			if  found {
-				if row.LastModified != fileInfo.LastModified || row.FileSize != fileInfo.Size {
+				changed := false;
+				if  row.FileSize == fileInfo.Size && row.LastModified != fileInfo.LastModified {
+					h := utils.GetFileHash(filepath.Join(srcAbsPath , fileInfo.Name), hashSuffix)
+					if h != row.ToHashString() {
+						changed = true;
+					}
+				}
+
+				if  changed || row.FileSize != fileInfo.Size {
 					if _, f := changedDirs.Load(srcAbsPath); !f {
 						if(storeFiles){
 							changedDirs.Store(filepath.Join(srcAbsPath , fileInfo.Name), false)

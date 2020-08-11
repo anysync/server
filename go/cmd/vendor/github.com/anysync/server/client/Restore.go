@@ -6,12 +6,9 @@
 package client
 
 import (
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/rclone/rclone/cmd"
-	fsync "github.com/rclone/rclone/fs/sync"
 	"net/http"
 	"net/url"
 	"os"
@@ -76,6 +73,7 @@ func processRow(io *utils.IndexBinRow, args ...interface{}) error {
 			//utils.Debug("fileHash: ", fileHash, "; io.bin.hash: ", sha)
 		}
 		if sha == fileHash {
+			//utils.Debug("Skip download:", dest)
 			toDownload = false
 		} else if utils.FileExists(fileInfo) {
 			meta := utils.GetDatObject(sha)
@@ -101,6 +99,7 @@ func processRow(io *utils.IndexBinRow, args ...interface{}) error {
 		}
 
 		if toDownload {
+			//utils.Debug("To download:", dest)
 			for i := 0; i < 3; i++ {
 				utils.Debug("Before calling GetCloudFile, sha:", sha, "; filehash:", fileHash)
 				//fmt.Println("GetCloudFile:", sha, "to", dest)
@@ -278,6 +277,7 @@ func GetUserCloudTopPath() string {
 //Rename non-current version .dat files to .dtt, so that download only current version
 //It calls ObjectsDbSetStateValuesTo(0) to set values to 0, then set to 1 for all current files.
 func CleanDatFiles() {
+	utils.TimeTrack(time.Now(), "CleanDatFiles")
 	utils.ObjectsDbSetStateValuesTo(0)
 	reposMap := utils.GetRepositoryMap()
 	for _, repo := range reposMap {
@@ -579,18 +579,23 @@ func ToRestoreToLocal(paths url.Values) {
 }
 
 func RestoreAll(paths url.Values) {
+	SyncState = SYNC_STATE_RESTORING
 	CleanDatFiles()
+
+	/*
 	path := GetUserCloudTopPath()   // "AnySync1/5f03be5c599df0d0089e9292d9efa7ec21cd7741c22d0f20dd63603c"
-	//path = "1:" + path + "/objects" //   "1:AnySync1/5f03be5c599df0d0089e9292d9efa7ec21cd7741c22d0f20dd63603c/objects"
 	path = utils.LoadAppParams().GetSelectedStorage().RemoteNameCode + ":" + path + "/objects" //   "1:AnySync1/5f03be5c599df0d0089e9292d9efa7ec21cd7741c22d0f20dd63603c/objects"
 	args := []string{path, utils.GetAppHome()}
 	fsrc, fdst := cmd.NewFsSrcDst(args)
 	utils.Debug("RestoreAll. To call CopyDir")
 	fsync.CopyDir(context.Background(), fdst, fsrc, true)
+	*/
 	utils.Debug("CopyDir returned. To restore to local:", paths)
 	ToRestoreToLocal(paths)
 	utils.SendToLocal(utils.MSG_PREFIX + "Finished restoring files.")
 	utils.Debug("Restore to local done")
 	utils.ObjectsDbSetStateValuesTo(1)
+	SyncState = SYNC_STATE_SYNCED
+
 	//utils.RenameRecursively(utils.GetTopObjectsFolder(), utils.EXT_DTT, utils.EXT_DAT);
 }

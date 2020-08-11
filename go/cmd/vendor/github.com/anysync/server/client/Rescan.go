@@ -63,7 +63,8 @@ func NewRescan() *Rescan {
 }
 
 func scanStart() bool{
-	if(SyncState == SYNC_STATE_SYNCING){
+	if(SyncState == SYNC_STATE_SYNCING || SyncState == SYNC_STATE_RESTORING){
+		utils.Debug("Scan was not started.")
 		return false
 	}
 	SyncState = SYNC_STATE_SYNCING
@@ -80,7 +81,7 @@ func scanDone(errMsg string){
 	}
 }
 func isScanning() bool{
-	return SyncState == SYNC_STATE_SYNCING
+	return SyncState == SYNC_STATE_SYNCING || SyncState == SYNC_STATE_RESTORING
 }
 
 func StartRescan(f func([]*utils.ModifiedFolderExt) error) bool{
@@ -145,6 +146,7 @@ const (
 	SYNC_STATE_INITIAL = -1
 	SYNC_STATE_SYNCED  = 0
 	SYNC_STATE_SYNCING = 1
+	SYNC_STATE_RESTORING = 2
 )
 
 var SyncState  = SYNC_STATE_INITIAL
@@ -231,7 +233,7 @@ func rescanFolderEx(folders []FolderEx, owner string,  f func([]*utils.ModifiedF
 			}
 			n := rescan.countChanges()
 			utils.SendToLocal(utils.MSG_PREFIX + fmt.Sprintf( "Total changes: %d", n))
-			if(n == 0){
+			if(n == 0 && contactServerEvenNoChange != 1){
 				return  rescan, "";
 			}
 			if f != nil {
@@ -318,15 +320,18 @@ func StartRescanTimer(){
 				}
 				return true
 			})
+
 			if len(recursiveFolders) > 0 {
 				utils.Info("Recursive Rescan after", config.ScanInterval, " minutes of no-scan for folders:", recursiveFolders )
-				go RescanFolders(recursiveFolders, nil, false, 0, false)
+				go RescanFolders(recursiveFolders, nil, false, 1, false)
 			}
 			if len(folders) > 0 {
 				utils.Info("Rescan after", config.ScanInterval, " minutes of no-scan for forders:", folders )
-				go RescanFolders(folders, nil, false, 0, true)
+				go RescanFolders(folders, nil, false, 1, true)
 			}
-
+			if (t2 - lastScanTime) > int64(60 * config.ScanInterval * 3) &&  len(folders) == 0 && len(recursiveFolders) == 0 {
+				go StartRescan(nil)
+			}
 
 		}
 	}
@@ -336,6 +341,7 @@ func cleanUp(deletes *syncmap.Map, errMsg string) {
 	scanMutex.Unlock()
 	utils.SendToLocal("done: " + errMsg)
 	deleteFiles(deletes)
+	go utils.RemoveEmptySubfolders(utils.GetTopObjectsFolder())
 
 	utils.Info("Return from rescanFolderEx")
 	ClearScan()
@@ -347,18 +353,15 @@ func cleanUp(deletes *syncmap.Map, errMsg string) {
 
 func deleteFiles(deletes *syncmap.Map) {
 	deletes.Range(func(k, v interface{}) bool {
-		fname := k.(string)
-		//utils.Debug("---Delete file: ", fname)
-		_=utils.RemoveFile(fname)
+		_, ok := v.(bool)
+		if ok {
+			fname := k.(string)
+			utils.Debug("---Delete folder: ", fname)
+			_ = utils.RemoveAllFiles(fname)
+		}
 		return true
 	})
 }
-
-type ByFileSize []os.FileInfo
-
-func (a ByFileSize) Len() int           { return len(a) }
-func (a ByFileSize) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByFileSize) Less(i, j int) bool { return a[i].Size() < a[j].Size() }
 
 func createFolders() {
 	var folders = []string{utils.GetTasksFolder(), utils.GetLogsFolder(), utils.GetTopTmpFolder(), utils.GetPacksFolder(), utils.GetDataFolder()}
@@ -798,7 +801,18 @@ func (this *Rescan) fixRenaming() {
 func (this *Rescan) fixSymlinks(fis []os.FileInfo, currentRelativePath, sourceAbsPath, parentSha string) []*utils.RealFileInfo {
 	var fileNames []*utils.RealFileInfo
 	var valid bool
-	sort.Sort(ByFileSize(fis)) //smaller ones are in the front
+	//sort.Slice(fis, func(i, j int) bool { return fis[i].Name() < fis[j].Name() }) //sort by file name
+	//sort.Sort(ByFileSize(fis)) //smaller ones are in the front
+	sort.Slice(fis, func(i,j int) bool{
+		if fis[i].IsDir() {
+			return fis[i].Name() < fis[j].Name()
+		}
+		if(fis[i].ModTime().Equal(fis[j].ModTime())){
+			return fis[i].Size() < fis[j].Size()
+		}else {
+			return fis[i].ModTime().Before(fis[j].ModTime())
+		}
+	})
 	for _, fileInfo := range fis {
 		valid = true
 		fileName := fileInfo.Name()

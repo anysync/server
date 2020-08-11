@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"golang.org/x/sync/syncmap"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	utils "github.com/anysync/server/utils"
@@ -137,6 +138,13 @@ func generateFinalPackFile(repository * utils.Repository,  fileParts []*utils.Fi
 	 deletes * syncmap.Map) {
 	lastModified := uint32(0)
 	var fileHash string;
+	for _, part := range fileParts {
+		if len(part.P) > 0 {
+			dir := filepath.Dir(part.P);
+			utils.Debug("generateFinalPackFile.Added deletes:", dir)
+			deletes.Store(dir, true)
+		}
+	}
 	fileParts, filePart, err := CompressAndUploadPack( fileParts, deletes, repository, objects);
 	fileHash = filePart.GetFileHash()
 	if  err != nil {
@@ -145,6 +153,10 @@ func generateFinalPackFile(repository * utils.Repository,  fileParts []*utils.Fi
 		for _, part := range fileParts {
 			if lastModified == 0 {
 				lastModified = part.GetLastModified()
+			}
+			if len(part.P) > 0 {
+				dir := filepath.Dir(part.P);
+				deletes.Store(dir, true)
 			}
 			part.P = fileHash
 			part.T = utils.FILE_META_TYPE_PACK_ITEM

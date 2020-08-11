@@ -10,7 +10,7 @@ require (
 	github.com/h2non/filetype v1.1.0 // indirect
 	github.com/mattn/go-sqlite3 v1.14.0 // indirect
 	github.com/panjf2000/ants v1.3.0 // indirect
-	github.com/rclone/rclone v1.52.2 // indirect
+	github.com/rclone/rclone v1.52.3 // indirect
 	github.com/soheilhy/cmux v0.1.4
 	google.golang.org/grpc v1.27.1
 )

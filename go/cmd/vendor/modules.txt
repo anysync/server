@@ -97,13 +97,6 @@ github.com/dropbox/dropbox-sdk-go-unofficial/dropbox/team_common
 github.com/dropbox/dropbox-sdk-go-unofficial/dropbox/team_policies
 github.com/dropbox/dropbox-sdk-go-unofficial/dropbox/users
 github.com/dropbox/dropbox-sdk-go-unofficial/dropbox/users_common
-# github.com/dsnet/compress v0.0.1
-github.com/dsnet/compress
-github.com/dsnet/compress/bzip2
-github.com/dsnet/compress/bzip2/internal/sais
-github.com/dsnet/compress/internal
-github.com/dsnet/compress/internal/errors
-github.com/dsnet/compress/internal/prefix
 # github.com/gogo/protobuf v1.2.1
 github.com/gogo/protobuf/proto
 # github.com/golang/groupcache v0.0.0-20200121045136-8c9f03a8e57e
@@ -155,8 +148,6 @@ github.com/mattn/go-isatty
 github.com/mattn/go-sqlite3
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/mholt/archiver v3.1.1+incompatible
-github.com/mholt/archiver
 # github.com/minio/sha256-simd v0.1.1
 github.com/minio/sha256-simd
 # github.com/mitchellh/go-homedir v1.1.0
@@ -165,8 +156,6 @@ github.com/mitchellh/go-homedir
 github.com/ncw/go-acd
 # github.com/ncw/swift v1.0.50
 github.com/ncw/swift
-# github.com/nwaples/rardecode v1.0.0
-github.com/nwaples/rardecode
 # github.com/panjf2000/ants v1.3.0
 github.com/panjf2000/ants
 # github.com/patrickmn/go-cache v2.1.0+incompatible
@@ -202,7 +191,7 @@ github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
 # github.com/putdotio/go-putio/putio v0.0.0-20200123120452-16d982cac2b8
 github.com/putdotio/go-putio/putio
-# github.com/rclone/rclone v1.52.2
+# github.com/rclone/rclone v1.52.3
 github.com/rclone/rclone/backend/alias
 github.com/rclone/rclone/backend/all
 github.com/rclone/rclone/backend/amazonclouddrive
@@ -333,17 +322,10 @@ github.com/spf13/cobra
 github.com/spf13/pflag
 # github.com/t3rm1n4l/go-mega v0.0.0-20200117211730-79a813bb328d
 github.com/t3rm1n4l/go-mega
-# github.com/ulikunitz/xz v0.5.6
-github.com/ulikunitz/xz
-github.com/ulikunitz/xz/internal/hash
-github.com/ulikunitz/xz/internal/xlog
-github.com/ulikunitz/xz/lzma
 # github.com/vivint/infectious v0.0.0-20200605153912-25a574ae18a3
 github.com/vivint/infectious
 # github.com/xanzy/ssh-agent v0.2.1
 github.com/xanzy/ssh-agent
-# github.com/xi2/xz v0.0.0-20171230120015-48954b6210f8
-github.com/xi2/xz
 # github.com/youmark/pkcs8 v0.0.0-20191102193632-94c173a94d60
 github.com/youmark/pkcs8
 # github.com/yunify/qingstor-sdk-go/v3 v3.2.0

@@ -290,10 +290,12 @@ func ExecuteResetAll(task *WriteTask) error {
 	}
 	Debug("To unzip file ", task.FolderHash, " to ", GetAppHome())
 	//UnzipTo(task.FolderHash, "/tmp/l")
-	UnzipTo(task.FolderHash, filepath.Clean(GetAppHome()))
+	err := UnzipTo(task.FolderHash, filepath.Clean(GetAppHome()))
 	defer RemoveFile(task.FolderHash)
-
-	return nil
+	if(err != nil){
+		Error("Cannot not unzip file:", task.FolderHash, "; error is :", err)
+	}
+	return err
 }
 
 func NewWriteTask(folderHash string, m uint32) *WriteTask {

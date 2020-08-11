@@ -543,6 +543,27 @@ func RemoveAllFiles(path string) error {
 	return os.RemoveAll(path)
 }
 
+//func RemoveAllBut(except string){
+//	Debug("EnterRemoveAllBut:", except)
+//	dir := filepath.Dir(except)
+//	name := filepath.Base(except)
+//	f, err := os.Open(dir)
+//	if err != nil {
+//		return
+//	}
+//	fileInfo, err := f.Readdir(-1)
+//	f.Close()
+//	if err != nil {
+//		return
+//	}
+//	for _, file := range fileInfo {
+//		if(file.Name() != name) {
+//			Debug("To Remove file:", filepath.Join(dir, file.Name()))
+//			_ = os.Remove(filepath.Join(dir, file.Name()))
+//		}
+//	}
+//}
+
 // Removes all children it contains, but keeps the directory
 func RemoveAllSubItems(path string) error {
 	if err := os.RemoveAll(path); err != nil {
@@ -550,6 +571,21 @@ func RemoveAllSubItems(path string) error {
 	} else {
 		return Mkdir(path)
 	}
+}
+
+func RemoveEmptySubfolders(topPath string){
+	files, err := ioutil.ReadDir(topPath)
+	if err != nil {
+		return
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			RemoveEmptySubfolders(filepath.Join(topPath, file.Name()))
+		}else{
+			return
+		}
+	}
+	RemoveEmptyFolders(topPath, 3)
 }
 
 func RemoveEmptyFolders(absPath string, upLevel int) {

@@ -7,7 +7,9 @@
 package utils
 
 import (
+	"os"
 	"os/user"
+	"path/filepath"
 	"strings"
 )
 type AsErrorCode uint32;
@@ -272,16 +274,19 @@ var IS_OFFICIAL_MAIN_SERVER = false;
 
 var gCurrentHome string;
 var gAppRoot string;
-var GNoResetAppHome bool = false;
+var GNoResetAppHome  = false;
 func GetAppRoot()string{
 	if(len(gAppRoot ) > 0){
 		return gAppRoot;
+	}
+	if(IS_MAIN_SERVER_SIDE && IsWindows()) {
+		return filepath.Join(os.Getenv("PROGRAMDATA") , "AnySync") + "\\"
 	}
 	usr, err := user.Current()
 	if err != nil {
 		Critical(err)
 	}
-	h := usr.HomeDir + "/.AnySync/"
+	h := filepath.Join(usr.HomeDir , ".AnySync") + "/"
 	return h;
 }
 
@@ -299,7 +304,7 @@ func GetAppHome() string {
 		Critical(err)
 	}
 	h := usr.HomeDir + "/.AnySync"
-	if(!FileExists(h)) {Mkdir(h);}
+	if(!FileExists(h)) {_=Mkdir(h);}
 	if client, err := ReadString(h + "/" + "current"); err == nil {
 		client = strings.TrimSpace(client);
 		gCurrentHome = h + "/" + client + "/"
@@ -322,10 +327,14 @@ func SetAppHome(userID string){
 }
 func CurrentFileExists()bool{
 	root:=GetAppRoot();
-	return FileExists(root + "current");
+	file := filepath.Join(root, "current")
+	return FileExists(file)
 }
+
 func GetFolder(name string)string{
-	if(gCurrentHome == ""){ return "";}
+	if(gCurrentHome == ""){
+		GetAppHome()
+	}
 	return gCurrentHome + name + "/";
 }
 

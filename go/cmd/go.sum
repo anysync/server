@@ -393,8 +393,8 @@ github.com/prometheus/procfs v0.0.8/go.mod h1:7Qr8sr6344vo1JqZ6HhLceV9o3AJ1Ff+Gx
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/putdotio/go-putio/putio v0.0.0-20200123120452-16d982cac2b8 h1:Y258uzXU/potCYnQd1r6wlAnoMB68BiCkCcCnKx1SH8=
 github.com/putdotio/go-putio/putio v0.0.0-20200123120452-16d982cac2b8/go.mod h1:bSJjRokAHHOhA+XFxplld8w2R/dXLH7Z3BZ532vhFwU=
-github.com/rclone/rclone v1.52.2 h1:NeGP8eJu6p/HwvuLAsaVpvkm8f3dJ5ixzCMR+csVFbI=
-github.com/rclone/rclone v1.52.2/go.mod h1:UXrNXjXn8s2Nt8e6zyzvXsUw4FMrqHmfA82lRZ18DLk=
+github.com/rclone/rclone v1.52.3 h1:PygfyeH6rmnnTEPtmgMsIFIcv4mRHLZnDk0NTu72SMg=
+github.com/rclone/rclone v1.52.3/go.mod h1:UXrNXjXn8s2Nt8e6zyzvXsUw4FMrqHmfA82lRZ18DLk=
 github.com/rfjakob/eme v0.0.0-20171028163933-2222dbd4ba46 h1:w2CpS5muK+jyydnmlkqpAhzKmHmMBzBkfYUDjQNS1Dk=
 github.com/rfjakob/eme v0.0.0-20171028163933-2222dbd4ba46/go.mod h1:U2bmx0hDj8EyDdcxmD5t3XHDnBFnyNNc22n1R4008eM=
 github.com/rogpeppe/fastuuid v0.0.0-20150106093220-6724a57986af/go.mod h1:XWv6SoW27p1b0cqNHllgS5HIMJraePCO15w5zCzIWYg=
