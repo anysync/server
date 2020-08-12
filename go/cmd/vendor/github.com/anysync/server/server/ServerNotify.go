@@ -156,16 +156,8 @@ func (s *remoteserver) SendData(ctx context.Context, in *utils.UserRequest) (*ut
 			utils.Debug("Wrong version:", in.Version)
 			return utils.NewActionResponseWithError(utils.ERROR_CODE_BAD_VERSION), errors.New("wrong version")
 		}
-		serverConfig := utils.LoadServerConfig();
-		serverName := utils.LoadAppParams().Server
-		if !serverConfig.IsLinkedServer(in.Server) && in.Server != serverName && serverName != "localhost" {
-			ip := serverConfig.GetIP(in.Server)
-			utils.Debug("Wrong server:", in.Server, "; right IP:", ip)
-			resp := utils.NewActionResponseWithError(utils.ERROR_CODE_WRONG_SERVER);
-			resp.Data = make(map[string][]byte)
-			resp.Data["ip"] = []byte(ip)
-			return resp, nil
-		}
+
+
 	}
 	response := utils.ActionResponse{
 		User:     in.UserID,
@@ -597,19 +589,8 @@ func (s *remoteserver) GetSyncResult(ctx context.Context, in *utils.ModifiedData
 		utils.Debug("Wrong version:", in.Version)
 		return nil, errors.New("wrong version")
 	}
-	serverConfig := utils.LoadServerConfig();
-	serverName := utils.LoadAppParams().Server
-	if !serverConfig.IsLinkedServer(in.Server) && in.Server != serverName  && serverName != "localhost"{
-		utils.Debug("Wrong server:", in.Server)
-		ip := serverConfig.GetIP(in.Server)
-		utils.Debug("Wrong server:", in.Server, "; right IP:", ip)
-		resp := new(utils.ServerSyncResponse)
-		resp.Code = int32(utils.ERROR_CODE_WRONG_SERVER)
-		resp.Objects = make(map[string][]byte)
-		resp.Objects["ip"] = []byte(ip)
-		utils.Debug("return resp non nil. ip:", ip)
-		return resp, nil;// errors.New("wrong server")
-	}
+
+
 	b, userObj := Authenticate(in.User, in.Auth, in.DeviceID, in.Time)
 	if !b || userObj == nil {
 		return nil, errors.New("auth failed")
