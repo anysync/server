@@ -9,16 +9,36 @@ An open source self-hosted cloud [server](https://anysync.net), a secure cloud s
 - Deduplication: only uniqure data is compressed and uploaded to the cloud.
 - Versioned file backup and sync.
 
-## Installation (64-bit Linux)
+## Installation (32-bit Raspberry Pi OS &amp; 64-bit Linux)
 
 - Download the [zip file](https://github.com/anysync/server/releases)
-- Unzip it on a 64-bit Linux
+- Unzip it
 - Run $INSTALL_DIR/bin/run.sh
   The first time it runs, it will create "~/.AnySync" directory and configure it.
 
 - Run $INSTALL_DIR/bin/run.sh again to start the server.
   If you have firewall, you need to configure it to open port 65064 (for [MINIO](https://github.com/minio/) server) and 65065 (for AnySync server). The
   self-hosted edition uses MINIO server to store files as objects.
+
+- You can add startup script (run.sh) to /etc/rc.local to start the server automatically after OS reboot.
+
+Here is a sample rc.local on Raspberry Pi:
+```
+#!/bin/sh -e
+
+#must be before 'exit 0'
+su pi -c /home/pi/anysync/bin/run.sh
+
+exit 0
+
+```
+
+## Installation (64-bit Windows)
+
+- Download the [Windows installer file](https://github.com/anysync/server/releases)
+- Run the installer. After installation two Windows services will be installed. 
+  If you have firewall, you need to configure it to open port 65064 (for [MINIO](https://github.com/minio/) server) and 65065 (for AnySync server). The
+  self-hosted edition uses MINIO server to store files as objects. MINIO stores data on "%PROGRAMDATA%\AnySync\objects" directory.
 
 ## Technical Details
 - Secure random 256-bit file key and auth key are generated.
