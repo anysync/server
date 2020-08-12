@@ -104,7 +104,7 @@ func LoadServerConfig() *ServerConfig {
 
 	root := config.Directory
 	if IsWindows() {
-		root =  filepath.Join(os.Getenv("ALLUSERSPROFILE"),"data") + "\\"
+		root =  filepath.Join(os.Getenv("ALLUSERSPROFILE"),"AnySync") + "\\"
 	} else {
 		if !strings.HasSuffix(root, "/") {
 			root += "/"
