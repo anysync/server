@@ -33,6 +33,8 @@ exit 0
 
 ```
 
+Do not forget to make /etc/rc.local executable.
+
 ## Installation (64-bit Windows)
 
 - Download the [Windows installer file](https://github.com/anysync/server/releases)
