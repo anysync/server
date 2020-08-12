@@ -480,7 +480,7 @@ func LoadConfigFile(configFile string) (*Config, error) {
 
 func GetServerConfigDir() (string, error) {
 	if(IS_MAIN_SERVER_SIDE && IsWindows()) {
-		return filepath.Join(os.Getenv("PROGRAMDATA") , "AnySync"), nil
+		return filepath.Join(os.Getenv("ALLUSERSPROFILE") , "AnySync"), nil
 	}
 	var configDirLocation string
 
@@ -572,7 +572,7 @@ func LoadAppParams() * AppParams{
 	}
 	var paramsFile string;
 	if(IS_MAIN_SERVER_SIDE && IsWindows()) {
-		paramsFile = filepath.Join(os.Getenv("PROGRAMDATA"),"AnySync", rcFile)
+		paramsFile = filepath.Join(os.Getenv("ALLUSERSPROFILE"),"AnySync", rcFile)
 	}else {
 		paramsFile = filepath.Join(paramsDir, rcFile);
 	}

@@ -280,7 +280,7 @@ func GetAppRoot()string{
 		return gAppRoot;
 	}
 	if(IS_MAIN_SERVER_SIDE && IsWindows()) {
-		return filepath.Join(os.Getenv("PROGRAMDATA") , "AnySync") + "\\"
+		return filepath.Join(os.Getenv("ALLUSERSPROFILE") , "AnySync") + "\\"
 	}
 	usr, err := user.Current()
 	if err != nil {
