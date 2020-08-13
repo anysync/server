@@ -9,6 +9,10 @@ An open source self-hosted cloud [server](https://anysync.net), a secure cloud s
 - Deduplication: only uniqure data is compressed and uploaded to the cloud.
 - Versioned file backup and sync.
 
+## Documentation
+                                 
+Please see the AnySync [website](https://anysync.net/documentation/index.html) for more detailed doucmentation.
+
 ## Installation (32-bit Raspberry Pi OS &amp; 64-bit Linux)
 
 - Download the [zip file](https://github.com/anysync/server/releases)
