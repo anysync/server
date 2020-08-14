@@ -33,7 +33,10 @@ const(
 	CONFIG_MODE_BIDIRECTION = 0
 	//Placeholder, no local directory so do not track local changes.
 	CONFIG_MODE_PLACEHOLDER = 1
-	CONFIG_MODE_UPLOAD      = 1
+	//Placeholder, with local directory,  do not track local deletes and modifies, but track new files.
+	CONFIG_MODE_NEW_ONLY    = 2
+
+
 
 	//LibreOffice creates files like .~lock.filename.ext#
 	//can handle file path such as */caches/*...

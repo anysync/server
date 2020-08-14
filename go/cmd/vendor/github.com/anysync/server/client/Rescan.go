@@ -456,7 +456,7 @@ func (this *Rescan) rescanDirectory(directoryAbsPath string, currentRelativePath
 	}
 	config := utils.LoadConfig()
 	var db * sql.DB
-	if len(binRowMap) > 0 && config.Mode != utils.CONFIG_MODE_UPLOAD && !this.ignoreDeletes {
+	if len(binRowMap) > 0 && config.Mode != utils.CONFIG_MODE_NEW_ONLY && !this.ignoreDeletes {
 		for _, item := range binRowMap {
 			if utils.IsFileModeDeleted(item.FileMode) {
 				continue
@@ -547,41 +547,44 @@ func (this *Rescan) handleFile(fileInfo *utils.RealFileInfo, mfolder *utils.Modi
 	loweredName := strings.ToLower(name)
 
 	if row, ok := binRowMap[fKey]; ok { //the file/folder is found in existing registry.
-		if !isDirectory {
-			permissionChanged := (row.FileMode != fileInfo.Permission)
-			if utils.IsWindows() {
-				permissionChanged = false
-			} //We don't care permission changes on Windows.
-			if row.LastModified != fileInfo.LastModified || row.FileSize != fileInfo.Size || permissionChanged {
-				accessible, hash := checkAccessAndHash(fileInfo, currentRelativePath+"/"+name, hashSuffix)
-				if !accessible {
-					return true
-				}
-				utils.Debugf("row.FileMode:%d, fileInfo.Permission:%d, row.absPath:%s, fileHash:%s, row.fileHash:%s", row.FileMode, fileInfo.Permission, fileInfo.AbsPath, hash, row.ToHashString())
-				fileInfo.Hash = hash
-				this.fileHashMap[mfolder.FolderHash+fKey] = fileInfo
-				hasChanged := (hash != row.ToHashString())
-				if permissionChanged || hasChanged {
-					if updateMeta {
-						var opMode uint8
-						if hasChanged {
-							opMode = utils.MODE_MODIFIED_CONTENTS
-						} else {
-							utils.Debugf("MODE_MODIFIED_PERMISSIONS. FileHash:%s, oldPerm:%o, newPerm:%o\n", name, row.FileMode, fileInfo.Permission)
-							opMode = utils.MODE_MODIFIED_PERMISSIONS
-						}
-						newRow := updateRowAt(pathBin, row.Index, fKey, fileInfo,  &hash, 0, opMode)
-						isDuplicate := false
-						generateHashObject(fileInfo.AbsPath, hash, &isDuplicate)
-						utils.Debugf("Add new row, Index:%d, opMode:%d, Name:%s, newRow.len:%d\n", row.Index, opMode, name, len(newRow))
-						if newlyAddedRow, ok = AddRow(mfolder, row.Index, opMode, &newRow, name, isDirectory, this); !ok {
-							ret = false
+		config := utils.LoadConfig()
+		if config.Mode != utils.CONFIG_MODE_NEW_ONLY {
+			if !isDirectory {
+				permissionChanged := (row.FileMode != fileInfo.Permission)
+				if utils.IsWindows() {
+					permissionChanged = false
+				} //We don't care permission changes on Windows.
+				if row.LastModified != fileInfo.LastModified || row.FileSize != fileInfo.Size || permissionChanged {
+					accessible, hash := checkAccessAndHash(fileInfo, currentRelativePath+"/"+name, hashSuffix)
+					if !accessible {
+						return true
+					}
+					utils.Debugf("row.FileMode:%d, fileInfo.Permission:%d, row.absPath:%s, fileHash:%s, row.fileHash:%s", row.FileMode, fileInfo.Permission, fileInfo.AbsPath, hash, row.ToHashString())
+					fileInfo.Hash = hash
+					this.fileHashMap[mfolder.FolderHash+fKey] = fileInfo
+					hasChanged := (hash != row.ToHashString())
+					if permissionChanged || hasChanged {
+						if updateMeta {
+							var opMode uint8
+							if hasChanged {
+								opMode = utils.MODE_MODIFIED_CONTENTS
+							} else {
+								utils.Debugf("MODE_MODIFIED_PERMISSIONS. FileHash:%s, oldPerm:%o, newPerm:%o\n", name, row.FileMode, fileInfo.Permission)
+								opMode = utils.MODE_MODIFIED_PERMISSIONS
+							}
+							newRow := updateRowAt(pathBin, row.Index, fKey, fileInfo, &hash, 0, opMode)
+							isDuplicate := false
+							generateHashObject(fileInfo.AbsPath, hash, &isDuplicate)
+							utils.Debugf("Add new row, Index:%d, opMode:%d, Name:%s, newRow.len:%d\n", row.Index, opMode, name, len(newRow))
+							if newlyAddedRow, ok = AddRow(mfolder, row.Index, opMode, &newRow, name, isDirectory, this); !ok {
+								ret = false
+							}
 						}
 					}
 				}
 			}
+			delete(binRowMap, fKey)
 		}
-		delete(binRowMap, fKey)
 	} else { //the file/folder is not found.
 		accessible, hash := checkAccessAndHash( fileInfo, currentRelativePath+"/"+name, hashSuffix)
 		if !accessible {
@@ -692,7 +695,7 @@ func (this *Rescan) fixRenaming() {
 				continue
 			}
 			utils.Debugf("Row, opMode:%d, Index:%d, fkey:%s;ignoreDeletes:%v; file:%s, fileHash:%s\n", opMode, index, fKey, this.ignoreDeletes, row.FileName, fileInfo.Hash)
-			if opMode == utils.MODE_REINSTATE_FILE && config.Mode != utils.CONFIG_MODE_UPLOAD {
+			if opMode == utils.MODE_REINSTATE_FILE && config.Mode != utils.CONFIG_MODE_NEW_ONLY {
 				hash := fileInfo.Hash // getHash(absPath, false, "")
 				utils.Debug("Reinstate file. name:", row.FileName, "; hash:", fileInfo.Hash)
 				newRow := updateRowAt( pathBin, index, row.GetRowFileNameKey(), fileInfo,  &hash, 0, utils.MODE_REINSTATE_FILE)
@@ -777,7 +780,7 @@ func (this *Rescan) fixRenaming() {
 		}
 	} //end of foreach folder
 
-	if config.Mode != utils.CONFIG_MODE_UPLOAD {
+	if config.Mode != utils.CONFIG_MODE_NEW_ONLY {
 		for key, dataArr := range this.deletedFiles {
 			for _,data := range dataArr {
 				if !data.notToUpdateRow {
@@ -1008,7 +1011,7 @@ func (rescan Rescan) uploadStagingAndSendout(msg * utils.ModifiedData, toSaveUpl
 			continue
 		}
 
-		if task.Mode == utils.TASK_UPDATE_LOCAL && config.Mode != utils.CONFIG_MODE_UPLOAD {
+		if task.Mode == utils.TASK_UPDATE_LOCAL && config.Mode != utils.CONFIG_MODE_NEW_ONLY {
 			updateLocalTasks = append(updateLocalTasks, task)
 		} else {
 			nonLocalTasks = append(nonLocalTasks, task)
@@ -1424,6 +1427,10 @@ func updateDatFilesAndCloseGap(objects map[string][]byte, folderUpdates map[stri
 
 
 	kvs = nil
+
+	if utils.LoadConfig().Mode ==  utils.CONFIG_MODE_NEW_ONLY { //no need to update local files
+		return ret
+	}
 	var deletes []string;
 	for key, m := range updateLocals {
 		tokens := strings.Split(key, ",")

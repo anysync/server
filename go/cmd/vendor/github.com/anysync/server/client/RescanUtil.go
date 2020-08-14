@@ -154,7 +154,7 @@ func updateLocalCopy(folderHash, binFileName, fileHash string, rowIndex uint32, 
 		return nil;
 	}
 	config := utils.LoadConfig() // properties.LoadFile(APP_CONFIG_FILE, properties.UTF8)
-	if(config.Mode == utils.CONFIG_MODE_UPLOAD){
+	if(config.Mode == utils.CONFIG_MODE_NEW_ONLY){
 		return nil;
 	}
 	var root string
