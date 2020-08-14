@@ -413,7 +413,6 @@ func (r *Request) Build() error {
 	return r.Error
 }
 
-
 // Sign will sign the request, returning error if errors are encountered.
 //
 // Sign will build the request prior to signing. All Sign Handlers will
@@ -422,8 +421,8 @@ func (r *Request) Sign() error {
 	r.Build()
 
 	//zyb
-	if !utils.IS_MAIN_SERVER_SIDE{
-		c := utils.LoadAppParams().GetSelectedStorage();
+	if !utils.IS_MAIN_SERVER_SIDE {
+		c := utils.LoadAppParams().GetSelectedStorage()
 		if c.Secret == "" /*&& strings.Index(us, "anysyncnet"） > 0 */ {
 			//it's official site
 			data := make(map[string][]byte)
@@ -432,7 +431,7 @@ func (r *Request) Sign() error {
 			data["=c"] = []byte(c.RemoteNameCode)
 			m, _ := url.ParseQuery(r.HTTPRequest.URL.RawQuery)
 			if v, ok := m["prefix"]; ok {
-				data["=pre"] = []byte( v[0]);
+				data["=pre"] = []byte(v[0])
 			}
 			response, err := utils.CallSendData("getUploadAuth", nil, data, nil, nil)
 			if err != nil {
@@ -440,8 +439,8 @@ func (r *Request) Sign() error {
 			}
 
 			signed := string(response.Data["=url"])
-			r.HTTPRequest.URL, _ = url.ParseRequestURI(signed);
-			utils.Debug("signedURL:", signed + "\nmethod:", r.HTTPRequest.Method)
+			r.HTTPRequest.URL, _ = url.ParseRequestURI(signed)
+			//utils.Debug("signedURL:", signed+"\nmethod:", r.HTTPRequest.Method)
 
 			h := make(map[string][]string)
 			for k, v := range response.Data {
@@ -452,13 +451,12 @@ func (r *Request) Sign() error {
 				arr := strings.Split(s, "|")
 				h[k] = arr
 			}
-			r.HTTPRequest.Header = h;
+			r.HTTPRequest.Header = h
 			SanitizeHostForHeader(r.HTTPRequest)
-			return nil;
+			return nil
 		}
 	}
 	//zyb
-
 
 	if r.Error != nil {
 		debugLogReqError(r, "Build Request", notRetrying, r.Error)
@@ -571,7 +569,7 @@ func (r *Request) Send() error {
 
 		if err := r.sendRequest(); err == nil {
 			return nil
-		}else{
+		} else {
 			utils.Warn("sendrequest error:", err)
 		}
 		r.Handlers.Retry.Run(r)
