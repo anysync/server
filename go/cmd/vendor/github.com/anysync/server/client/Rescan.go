@@ -21,7 +21,6 @@ import (
 	"golang.org/x/net/context"
 	"golang.org/x/sync/syncmap"
 	"io/ioutil"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
@@ -287,10 +286,10 @@ func RestoreCurrent(mode int, restoreDirectory string ) {
 		if mode == utils.CONFIG_MODE_PLACEHOLDER {
 			return
 		}
-		paths := url.Values{}
-		paths.Set("local0", restoreDirectory)
+		setLocalPaths(config, []string{restoreDirectory})
+
 		utils.SendToLocal("torestore")
-		RestoreAll(paths)
+		RestoreAll()
 		utils.SendToLocal("restoreDone")
 		utils.SendToLocal("reloadTree")
 		fmt.Println("Complete successfully.")

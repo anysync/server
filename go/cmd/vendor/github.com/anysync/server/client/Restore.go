@@ -500,6 +500,30 @@ func handleRows(hash string, begin, end int) {
 
 }
 
+func setLocalPaths(config *utils.Config, paths []string){
+	list := utils.GetRepositoryList()
+	i := 0
+	for _, repo := range list {
+		if repo.Hash == utils.SHARED_HASH {
+			continue
+		}
+		path := paths[i]
+		utils.Debug("i=", i, "; path is ", path)
+		path, _ = url.QueryUnescape(path)
+		utils.Debug("P is ", path)
+		if len(path) == 0 {
+			continue
+		}
+		repo.Local = path
+		config.Locals += fmt.Sprintf("%d%s%s", repo.Index, utils.LOCALS_SEPARATOR2, path)
+		utils.UpdateRepository(repo)
+		i++
+		if i >= len(paths){
+			break
+		}
+	}
+}
+
 func RestoreToLocal(restoreDirectory string, until int64, mode int, exit bool) {
 	utils.ResetCallback = func() {
 		//Invoked after resetgetall downloaded and created tree and objects directories.\
@@ -516,9 +540,11 @@ func RestoreToLocal(restoreDirectory string, until int64, mode int, exit bool) {
 		if until > 0 {
 			UpdateBinFilesUntil(until)
 		}
-		paths := url.Values{}
-		paths.Set("local0", restoreDirectory)
-		RestoreAll(paths)
+
+		setLocalPaths(config, []string{restoreDirectory})
+		SaveConfig()
+
+		RestoreAll()
 
 		fmt.Println("Complete successfully.")
 		if exit {
@@ -532,41 +558,50 @@ func toRestore(r *http.Request) {
 	u, _ := url.Parse(r.RequestURI)
 	utils.Debug("Request: ", u.RequestURI())
 	mode := u.Query().Get("mode")
-	if mode == "p" { //placeholder mode
-		config := utils.LoadConfig()
+	config := utils.LoadConfig()
+	if mode == "p" {
 		config.Mode = utils.CONFIG_MODE_PLACEHOLDER
-		SaveConfig()
-	} else {
-		RestoreAll(u.Query())
-		//ToRestoreToLocal(u.Query())
+	}else{
+		if(mode == "n"){
+			config.Mode = utils.CONFIG_MODE_NEW_ONLY
+		}else{//mode == "s"
+			config.Mode = utils.CONFIG_MODE_BIDIRECTION
+		}
+		list := utils.GetRepositoryList()
+		i := 0
+		for _, repo := range list {
+			if repo.Hash == utils.SHARED_HASH {
+				continue
+			}
+			k := fmt.Sprintf("local%d", i)
+			path := u.Query().Get(k)
+			utils.Debug("i=", i, "; path is ", path)
+			path, _ = url.QueryUnescape(path)
+			utils.Debug("P is ", path)
+			if len(path) == 0 {
+				continue
+			}
+			repo.Local = path
+			config.Locals += fmt.Sprintf("%d%s%s", repo.Index, utils.LOCALS_SEPARATOR2, path)
+			utils.UpdateRepository(repo)
+			i++
+		}
+	}
+	SaveConfig()
+
+	if config.Mode == utils.CONFIG_MODE_BIDIRECTION {
+		RestoreAll()
 	}
 }
 
-func ToRestoreToLocal(paths url.Values) {
+func ToRestoreToLocal() {
 	list := utils.GetRepositoryList()
-	config := utils.LoadConfig()
-	config.Mode = utils.CONFIG_MODE_BIDIRECTION
-	i := 0
 	for _, repo := range list {
 		if repo.Hash == utils.SHARED_HASH {
 			continue
 		}
-		k := fmt.Sprintf("local%d", i)
-		path := paths.Get(k)
-		utils.Debug("i=", i, "; path is ", path)
-		//path := u.Query().Get(k);
-		path, _ = url.QueryUnescape(path)
-		utils.Debug("P is ", path)
-		if len(path) == 0 {
-			continue
-		}
-		repo.Local = path
-		config.Locals += fmt.Sprintf("%d%s%s", repo.Index, utils.LOCALS_SEPARATOR2, path)
-		utils.UpdateRepository(repo)
 		RestoreToConfiguredPlace(repo)
-		i++
 	}
-	SaveConfig()
 	shares := utils.GetShareFolderList(list)
 	for _, shareFolder := range shares {
 		localBinFile := utils.GetTopTreeFolder() + utils.HashToPath(shareFolder.Hash) + utils.EXT_BIN
@@ -578,24 +613,12 @@ func ToRestoreToLocal(paths url.Values) {
 	utils.SendToLocal("reloadTree")
 }
 
-func RestoreAll(paths url.Values) {
+func RestoreAll() {
 	SyncState = SYNC_STATE_RESTORING
 	CleanDatFiles()
-
-	/*
-	path := GetUserCloudTopPath()   // "AnySync1/5f03be5c599df0d0089e9292d9efa7ec21cd7741c22d0f20dd63603c"
-	path = utils.LoadAppParams().GetSelectedStorage().RemoteNameCode + ":" + path + "/objects" //   "1:AnySync1/5f03be5c599df0d0089e9292d9efa7ec21cd7741c22d0f20dd63603c/objects"
-	args := []string{path, utils.GetAppHome()}
-	fsrc, fdst := cmd.NewFsSrcDst(args)
-	utils.Debug("RestoreAll. To call CopyDir")
-	fsync.CopyDir(context.Background(), fdst, fsrc, true)
-	*/
-	utils.Debug("CopyDir returned. To restore to local:", paths)
-	ToRestoreToLocal(paths)
+	ToRestoreToLocal()
 	utils.SendToLocal(utils.MSG_PREFIX + "Finished restoring files.")
 	utils.Debug("Restore to local done")
 	utils.ObjectsDbSetStateValuesTo(1)
 	SyncState = SYNC_STATE_SYNCED
-
-	//utils.RenameRecursively(utils.GetTopObjectsFolder(), utils.EXT_DTT, utils.EXT_DAT);
 }
