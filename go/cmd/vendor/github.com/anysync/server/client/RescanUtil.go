@@ -1123,11 +1123,21 @@ func doCheckFolder(i interface{}){
 	hashSuffix = f.hashSuffix
 	storeFiles := f.storeFiles
 	srcAbsPath = filepath.Clean(srcAbsPath)
+
 	if traversedDirs != nil {
 		traversedDirs.Store(srcAbsPath, true)
 	}
 	info, _ := os.Lstat(srcAbsPath)
 	isDir := info.IsDir();
+
+	config := utils.LoadConfig()
+	if isDir && config.HasSelectedFolder() {
+		p := currentRelativePath[len(utils.ROOT_NODE) + 1 : ]
+		if(config.IsInsideSelectedForlder(p)){
+			return;
+		}
+	}
+
 	if (len(folderHash) == 0) {
 		folderHash = utils.GetFolderPathHash(currentRelativePath)
 	}

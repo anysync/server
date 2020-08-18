@@ -372,7 +372,7 @@ func ExtractFile(filename string, from int64, size int64, destFile string, encry
 				}
 			}
 		}
-		Debug("To decrypt file hash: ", hash, ". DestFile: ", originalDestFile)
+		//Debug("To decrypt file hash: ", hash, ". DestFile: ", originalDestFile)
 
 		tmpFile := destFile + ".tlz"
 		err = DecryptFile(destFile, tmpFile, &key)

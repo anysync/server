@@ -37,8 +37,17 @@ func processRow(io *utils.IndexBinRow, args ...interface{}) error {
 	folderHash := args[2].(string)
 	repoName := args[3].(string)
 	hashSuffix := args[4].(string)
+
+	if utils.IsFileModeDirectory(io.FileMode) {
+		config :=utils.LoadConfig()
+		if(config.HasSelectedFolder()){
+			k := repoName + relativePath + "/" + fileName;
+			if config.IsSelectedFolder(k) {
+				return nil
+			}
+		}
+	}
 	dest := restoreRootDir + "/" + relativePath + "/" + fileName
-	//utils.Debug("destFile:", dest)
 	utils.SendMsg( "To restore file " + dest)
 	fName, t, _ := GetFileNameModTimeAndSize(dest)
 	if t > 0 && fName != fileName {
@@ -101,7 +110,7 @@ func processRow(io *utils.IndexBinRow, args ...interface{}) error {
 		if toDownload {
 			//utils.Debug("To download:", dest)
 			for i := 0; i < 3; i++ {
-				utils.Debug("Before calling GetCloudFile, sha:", sha, "; filehash:", fileHash)
+				//utils.Debug("Before calling GetCloudFile, sha:", sha, "; filehash:", fileHash)
 				//fmt.Println("GetCloudFile:", sha, "to", dest)
 				if err = GetCloudFile(fileInfo, sha, dest); err != nil {
 					utils.Errorf("Couldn't download file : %s", fileInfo)
@@ -178,6 +187,37 @@ func RestoreToConfiguredPlace(repo *utils.Repository) error {
 		}
 	}
 	return nil
+}
+
+func restoreSelectedForlders(restores, selectedFolders string)string{
+	folders := strings.Split(restores, ",")
+	SyncState.SetValue(SYNC_STATE_RESTORING)
+	repos := utils.GetRepositoryMap()
+
+	for _, f := range folders{
+		pos := strings.Index(f, "/")
+		repoName := f[0: pos]
+		repo := repos[repoName]
+		dir := repo.Local
+
+		p := utils.ROOT_NODE + "/" + f
+		hash := utils.GetFolderPathHash(p)
+		path := utils.HashToPath(hash)
+		restoreDir := dir + "/" + f[pos + 1: ]
+		fmt.Println("path:", p, " ; hash:", hash, "; restoreDir:", restoreDir)
+
+		if !utils.FileExists(restoreDir) {
+			_=utils.MkdirAll(restoreDir)
+		}
+		_ = ReadBinFileProcessRow(utils.GetTopTreeFolder()+"/"+path+".bin", processRow, "", restoreDir, hash, repo.Name, repo.HashSuffix)
+	}
+
+	config := utils.LoadConfig()
+	config.SelectedFolders = selectedFolders
+	SaveConfig()
+	SyncState.SetValue(SYNC_STATE_SYNCED)
+
+	return "OK"
 }
 
 func processRow2(io *utils.IndexBinRow, args ...interface{}) string {
@@ -582,6 +622,9 @@ func toRestore(r *http.Request) {
 				continue
 			}
 			repo.Local = path
+			if(len(config.Locals) > 0){
+				config.Locals += utils.LOCALS_SEPARATOR1
+			}
 			config.Locals += fmt.Sprintf("%d%s%s", repo.Index, utils.LOCALS_SEPARATOR2, path)
 			utils.UpdateRepository(repo)
 			i++
@@ -596,8 +639,15 @@ func toRestore(r *http.Request) {
 
 func ToRestoreToLocal() {
 	list := utils.GetRepositoryList()
+	config := utils.LoadConfig()
+
 	for _, repo := range list {
 		if repo.Hash == utils.SHARED_HASH {
+			continue
+		}
+		//utils.Debug("repo.name:", repo.Name)
+		if(config.HasSelectedFolder() && config.IsSelectedFolder(repo.Name)){
+			utils.Debug("is selected:", repo.Name)
 			continue
 		}
 		RestoreToConfiguredPlace(repo)
@@ -614,11 +664,11 @@ func ToRestoreToLocal() {
 }
 
 func RestoreAll() {
-	SyncState = SYNC_STATE_RESTORING
+	SyncState .SetValue( SYNC_STATE_RESTORING )
 	CleanDatFiles()
 	ToRestoreToLocal()
 	utils.SendToLocal(utils.MSG_PREFIX + "Finished restoring files.")
 	utils.Debug("Restore to local done")
 	utils.ObjectsDbSetStateValuesTo(1)
-	SyncState = SYNC_STATE_SYNCED
+	SyncState .SetValue( SYNC_STATE_SYNCED )
 }

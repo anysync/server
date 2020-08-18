@@ -31,7 +31,7 @@ func RestHandler(w http.ResponseWriter, r *http.Request) {
 	folder := u.Query().Get("d")
 	command := utils.GetLastUrlPathComponent(r.URL.Path)
 	var ret string
-	utils.Debug("RestHandler.Command: ", command  + " ; req:" + r.RequestURI)
+	//utils.Debug("RestHandler.Command: ", command  + " ; req:" + r.RequestURI)
 	if command == "restore" {
 		utils.Debugf("To call Restore to folder: %s\n", folder)
 		//time.Sleep(time.Second * 600)
@@ -106,6 +106,10 @@ func RestHandler(w http.ResponseWriter, r *http.Request) {
 		ret = verifyRepo(w, r, true)
 	} else if command == "verify" {
 		ret = verifyRepo(w, r, false)
+	}else if command == "deleteselected" {
+		ret = deleteSelectedFolders(u.Query().Get("fs"));
+	}else if command == "restoreselected"{
+		ret = restoreSelectedForlders(u.Query().Get("restore"), u.Query().Get("selectedfolders"))
 	} else if command == "fix" {
 		ret = fixRepo(w, r)
 	} else if command == "check" {
@@ -355,7 +359,7 @@ func versionRequestCopyFile(fileName, hash, destFile string, toOpenFile bool) (b
 			utils.SendToLocal("openFile:" + objFile)
 		}
 		return true, objFile
-	} else { //it's SaveAs  or Copy
+	} else {
 		if destFile == "Downloads" {
 			destFile = usr.HomeDir + "/Downloads/" + fileName
 		}
@@ -365,7 +369,12 @@ func versionRequestCopyFile(fileName, hash, destFile string, toOpenFile bool) (b
 		}
 		//utils.Debugf("Copy file, src:%s, dest:%s\n", srcFile, destFile)
 		utils.CopyFile(objFile, destFile)
-		utils.SendToLocal("doneDownload:" + fileName)
+		if(toOpenFile){
+			utils.Debug("To open file:" + destFile)
+			utils.SendToLocal("openFile:" + destFile)
+		}else {
+			utils.SendToLocal("doneDownload:" + destFile)
+		}
 		return true, destFile
 	}
 }
@@ -884,7 +893,8 @@ func getStates(w http.ResponseWriter, r *http.Request) {
 	u, _ := url.Parse(r.RequestURI)
 	utils.Debug("Request: ", u.RequestURI())
 	var text string
-	if SyncState == SYNC_STATE_SYNCING {
+	state := SyncState.GetValue()
+	if state == SYNC_STATE_SYNCING {
 		text = fmt.Sprintf("%d|%s", SyncState, SyncingRepos)
 	} else {
 		text = fmt.Sprintf("%d", SyncState)
@@ -1063,7 +1073,8 @@ func getSettings() string {
 	result += fmt.Sprintf("rate=%d\n", config.RateLimit)
 	result += fmt.Sprintf("mode=%d\n", config.Mode)
 	result += fmt.Sprintf("deviceID=%s\n", config.DeviceID)
-	//result += fmt.Sprintf("deviceName=%s\n", config.DeviceName)
+	result += fmt.Sprintf("scaninterval=%d\n", config.ScanInterval)
+	result += fmt.Sprintf("selectedfolders=%s\n", config.SelectedFolders)
 	result += fmt.Sprintf("localFolders=%s\n", local)
 	result += fmt.Sprintf("cloudStorage=%s\n", cloudStorage)
 	if(utils.CurrentUser != nil) {
@@ -1123,6 +1134,12 @@ func updateSetting(w http.ResponseWriter, r *http.Request) {
 			changed = true
 		} else if key == "threadcount" {
 			config.ThreadCount = utils.ToInt(val[0])
+			changed = true
+		} else if key == "scaninterval" {
+			config.ScanInterval = utils.ToInt(val[0])
+			changed = true
+		} else if key == "selectedfolders" {
+			config.SelectedFolders = val[0]
 			changed = true
 		} else if key == "minage" {
 			config.MinAge = int64(utils.ToInt(val[0]))
@@ -1402,3 +1419,17 @@ func changePassword(w http.ResponseWriter, r *http.Request) {
 		panic(err)
 	}
 }
+
+func deleteSelectedFolders(fs string) string{
+	folders := strings.Split(fs, ",")
+	repos := utils.GetRepositoryMap()
+	for  _, k := range folders{
+		pos := strings.Index(k, "/")
+		repoName := k[0 : pos]
+		r := repos[repoName]
+		absPath := r.Local + "/" + k[pos + 1:]
+		utils.RemoveAllFiles(absPath)
+	}
+	return "OK"
+}
+

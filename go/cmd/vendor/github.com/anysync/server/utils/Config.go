@@ -88,6 +88,7 @@ type Config struct {
 	ThreadCount   int;
 	Excluded      string;
 	Included      string;
+	SelectedFolders string;
 	MaxSize       int64;
 	//MinSize       int64;
 	MaxAge        int64;
@@ -96,6 +97,7 @@ type Config struct {
 	LogLevel      int; //0:debug; 1:info; 2:warning; 3:error; 4:critical
 	Locals          string;
 	ScanInterval    int; //in minutes
+	selectedFolders map[string]bool
 	//Repository    []Repository;
 }
 
@@ -139,7 +141,7 @@ func (c Config) GetLocalPath(index int) string{
 	}
 	locals := strings.Split( c.Locals,  LOCALS_SEPARATOR1);
 	for _, local := range locals{
-		Debug("Local:", local)
+		//Debug("Local:", local)
 		pos := strings.Index(local, LOCALS_SEPARATOR2);
 		if pos <= 0 {
 			if len(locals) == 1 {
@@ -258,12 +260,12 @@ func GetAllRepositoryList(includeShare bool)[]*Repository {
 				config := LoadConfig();
 				if repo.Hash != SHARED_HASH {
 					local := config.GetLocalPath(i);
-					Debug("For i:", i, "; localPath:", local)
+					//Debug("For i:", i, "; localPath:", local)
 					if (len(local) > 0) {
 						repo.Local = local;
 					}
 				}
-				Debug("i:", i, ". --- repo.Local: ", repo.Local)
+				//Debug("i:", i, ". --- repo.Local: ", repo.Local)
 				ret = append(ret, repo);
 			}
 		}
@@ -474,11 +476,46 @@ func LoadConfigFile(configFile string) (*Config, error) {
 
 	conf := getDefaultConfig();//DefaultConfig
 	if _, err := toml.DecodeFile(configFile, conf); err != nil {
-		log.Println("Load config err: ", err)
+		fmt.Errorf("Load config err: ", err)
 		return nil, err
 	}
 
+	if(len(conf.SelectedFolders) > 0) {
+		tokens := strings.Split(conf.SelectedFolders, ",")
+		conf.selectedFolders = make(map[string]bool)
+		for _, t := range tokens{
+			//tr := ROOT_NODE + "/"  + strings.TrimSpace(t)
+			tr := strings.TrimSpace(t)
+			if(len (tr) > 0) {
+				conf.selectedFolders[tr] = true
+			}
+		}
+	}
 	return conf, nil
+}
+func(c  Config) GetSelectedFolders()map[string]bool {
+	return c.selectedFolders
+}
+func(c  Config) IsSelectedFolder(folder string)bool{
+	if(c.selectedFolders == nil) {
+		return false
+	}
+
+	_, ok := c.selectedFolders[folder]
+	return ok
+}
+
+func (c Config)IsInsideSelectedForlder(p string)bool{
+	for k, _ :=range c.selectedFolders{
+		if(strings.HasPrefix(p, k)){
+			return true
+		}
+	}
+	return false
+}
+
+func(c Config) HasSelectedFolder()bool{
+	return len(c.selectedFolders) > 0
 }
 
 func GetServerConfigDir() (string, error) {
@@ -504,6 +541,8 @@ func SaveConfigFile(conf  * Config, file string)bool{
 	}
 	oldConfig, _ := LoadConfigFile(file);
 	WriteString(file, buf.String())
+	CurrentConfig = nil
+	LoadConfig()
 	skip := false;
 	if(oldConfig == nil){skip = true;}
 	if(oldConfig != nil && oldConfig.Proxy.Equals(config.Proxy)){

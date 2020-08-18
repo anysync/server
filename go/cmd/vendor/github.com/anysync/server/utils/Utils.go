@@ -1210,7 +1210,7 @@ func GetFileHash( filename, suffix string) string {
  * Get Hash for a file path. Local's path is changed to lower case first.
  * With the help of filepath.Clean, we can get canonical form of a file path.
  * So "root//Documents/" -> "root/Documents"
- * @param relativePath an example: "root/documents/api", where repo name is "documents".
+ * @param relativePath an example: "root/documents/api", where repo name is "documents". It starts with ROOT_NODE declared in Consts.go
  */
 func GetFolderPathHash(relativePath string) string {
 	if(relativePath == ROOT_NODE){

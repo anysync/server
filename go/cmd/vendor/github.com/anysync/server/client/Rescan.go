@@ -62,17 +62,18 @@ func NewRescan() *Rescan {
 }
 
 func scanStart() bool{
-	if(SyncState == SYNC_STATE_SYNCING || SyncState == SYNC_STATE_RESTORING){
+	state := SyncState.GetValue();
+	if(state == SYNC_STATE_SYNCING || state == SYNC_STATE_RESTORING){
 		utils.Debug("Scan was not started.")
 		return false
 	}
-	SyncState = SYNC_STATE_SYNCING
+	SyncState.SetValue(SYNC_STATE_SYNCING)
 	utils.SendToLocal("scanStart")
 	return true
 }
 
 func scanDone(errMsg string){
-	SyncState = SYNC_STATE_SYNCED
+	SyncState.SetValue(SYNC_STATE_SYNCED)
 	if errMsg == "" {
 		utils.SendToLocal("scanDone")
 	}else{
@@ -80,7 +81,8 @@ func scanDone(errMsg string){
 	}
 }
 func isScanning() bool{
-	return SyncState == SYNC_STATE_SYNCING || SyncState == SYNC_STATE_RESTORING
+	state := SyncState.GetValue();
+	return state == SYNC_STATE_SYNCING || state == SYNC_STATE_RESTORING
 }
 
 func StartRescan(f func([]*utils.ModifiedFolderExt) error) bool{
@@ -140,7 +142,10 @@ func RescanFolders(folders []string, f func([]*utils.ModifiedFolderExt) error, i
 	return true
 }
 
-
+type SyncStateData struct {
+	mu  sync.Mutex
+	value   int
+}
 const (
 	SYNC_STATE_INITIAL = -1
 	SYNC_STATE_SYNCED  = 0
@@ -148,7 +153,19 @@ const (
 	SYNC_STATE_RESTORING = 2
 )
 
-var SyncState  = SYNC_STATE_INITIAL
+var SyncState  = SyncStateData{value : SYNC_STATE_INITIAL,}
+
+func (s * SyncStateData) SetValue(v int){
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.value = v
+}
+func (s  SyncStateData) GetValue()int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.value
+}
+
 var SyncingRepos string
 var scanMutex = &sync.Mutex{}
 var toRescan bool
@@ -306,7 +323,8 @@ func StartRescanTimer(){
 			break;
 		}
 		t2 := time.Now().Unix();
-		if SyncState != SYNC_STATE_SYNCING && (t2 - lastScanTime) > int64(60 * config.ScanInterval)  {
+		state := SyncState.GetValue()
+		if state != SYNC_STATE_SYNCING && (t2 - lastScanTime) > int64(60 * config.ScanInterval)  {
 			changes := checkChanges("",false)
 			var recursiveFolders, folders []string
 			changes.Range(func(k, v interface{}) bool {
@@ -319,7 +337,7 @@ func StartRescanTimer(){
 				}
 				return true
 			})
-
+			utils.Debug("checkChanges returned. len(recursiveFolders):", len(recursiveFolders), "; len(folders):", len(folders))
 			if len(recursiveFolders) > 0 {
 				utils.Info("Recursive Rescan after", config.ScanInterval, " minutes of no-scan for folders:", recursiveFolders )
 				go RescanFolders(recursiveFolders, nil, false, 1, false)
@@ -395,6 +413,7 @@ func (this *Rescan) startRescan(srcAbsPath string, files [] string, currentRelat
 		if (len(folderHash) == 0) {
 			folderHash = utils.GetFolderPathHash(currentRelativePath)
 		}
+		fis = removeSelectedFolders(currentRelativePath, fis)
 		fileNames = this.fixSymlinks(fis, currentRelativePath, srcAbsPath, folderHash)
 	}else{
 		this.recursively = false;
@@ -456,7 +475,16 @@ func (this *Rescan) rescanDirectory(directoryAbsPath string, currentRelativePath
 	config := utils.LoadConfig()
 	var db * sql.DB
 	if len(binRowMap) > 0 && config.Mode != utils.CONFIG_MODE_NEW_ONLY && !this.ignoreDeletes {
+		hasSelectedFolder := config.HasSelectedFolder()
+
 		for _, item := range binRowMap {
+			if(hasSelectedFolder && utils.IsFileModeDirectory(item.FileMode)){
+				folder := currentRelativePath[len(utils.ROOT_NODE) + 1 : ]
+				key := folder + "/" + item.Name
+				if config.IsSelectedFolder(key) {
+					continue
+				}
+			}
 			if utils.IsFileModeDeleted(item.FileMode) {
 				continue
 			}
@@ -1155,7 +1183,7 @@ func (rescan Rescan) uploadStagingToCloud() (bool, string) {
 		err = nil
 		for _, f := range folders {
 			for _, r := range repos {
-				utils.Debug("f.Name: ", f.Name(), "; r.Hash: ", r.Hash)
+				//utils.Debug("f.Name: ", f.Name(), "; r.Hash: ", r.Hash)
 				if f.Name() == r.Hash {
 					for _, remote := range r.Remote {
 						if remote.Type != utils.REMOTE_TYPE_LOCAL_NFS {
@@ -1771,11 +1799,17 @@ func ClearScan() {
 func repoToFolderEx() ([]FolderEx, []FolderEx, map[string][]FolderEx) {
 	var fex []FolderEx
 	repos := utils.GetRepositoryList();
+	config := utils.LoadConfig()
 	for _, repo := range repos {
 		if(repo.Hash == utils.SHARED_HASH){
 			continue;
 		}
-		utils.Debug("Repo.Name: ", repo.Name , "; hash: ", repo.Hash , "; local: ", repo.Local )
+		if(config.HasSelectedFolder() && config.IsSelectedFolder(repo.Name)){
+			utils.Debug("repoToFolderEx, is selected:", repo.Name)
+			continue
+		}
+
+		//utils.Debug("Repo.Name: ", repo.Name , "; hash: ", repo.Hash , "; local: ", repo.Local )
 		f := FolderEx{}
 		absPath, _ := filepath.Abs(repo.Local)
 		f.absPath = filepath.Clean(absPath)
@@ -1792,7 +1826,7 @@ func repoToFolderEx() ([]FolderEx, []FolderEx, map[string][]FolderEx) {
 		if(repo.Hash == utils.SHARED_HASH){
 			continue;
 		}
-		utils.Debug("Repo.Name: ", repo.Name , "; hash: ", repo.Hash , "; local: ", repo.Local )
+		//utils.Debug("Repo.Name: ", repo.Name , "; hash: ", repo.Hash , "; local: ", repo.Local )
 		f := FolderEx{}
 		absPath, _ := filepath.Abs(repo.Local)
 		f.absPath = filepath.Clean(absPath)
@@ -2135,6 +2169,22 @@ func createBucketIfNecessary()  {
 			utils.CurrentParams = p;
 		}
 	}
+}
 
+func removeSelectedFolders(folder string, fis []os.FileInfo) []os.FileInfo{
+	config := utils.LoadConfig();
+	if !config.HasSelectedFolder() {
+		return fis
+	}
+	folder = folder[len(utils.ROOT_NODE) + 1 : ]
+	var ret [] os.FileInfo
+	for _, f := range fis {
+		key :=  folder + "/" + f.Name()
+		if config.IsSelectedFolder(key) {
+			continue;
+		}
+		ret = append(ret, f)
+	}
 
+	return ret;
 }
