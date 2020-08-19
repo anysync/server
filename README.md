@@ -5,7 +5,8 @@ An open source self-hosted cloud [server](https://anysync.net), a secure cloud s
 ## Features
 - End-to-end file encryption: data is encrypted using 256-bit AES-GCM, and it can only be accessed with your key. Neither an administrator nor third parties can read the data.
 - Incremental backup and sync.
-- Smart sync (placeholder files): it helps you reduce local disk storage.
+- Smart Sync (placeholder files): it helps you reduce local disk storage.
+- Selective Sync to save local disk space.
 - Deduplication: only uniqure data is compressed and uploaded to the cloud.
 - Versioned file backup and sync.
 
