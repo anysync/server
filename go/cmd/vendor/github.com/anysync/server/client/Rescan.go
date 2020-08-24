@@ -62,9 +62,7 @@ func NewRescan() *Rescan {
 }
 
 func scanStart() bool{
-	state := SyncState.GetValue();
-	if(state == SYNC_STATE_SYNCING || state == SYNC_STATE_RESTORING){
-		utils.Debug("Scan was not started.")
+	if isScanning() {
 		return false
 	}
 	SyncState.SetValue(SYNC_STATE_SYNCING)
@@ -356,6 +354,7 @@ func StartRescanTimer(){
 
 func cleanUp(deletes *syncmap.Map, errMsg string) {
 	scanMutex.Unlock()
+	utils.Debug("Enter cleanup")
 	utils.SendToLocal("done: " + errMsg)
 	deleteFiles(deletes)
 	go utils.RemoveEmptySubfolders(utils.GetTopObjectsFolder())
@@ -1479,7 +1478,7 @@ func updateDatFilesAndCloseGap(objects map[string][]byte, folderUpdates map[stri
 		}
 		if(hasImage){
 			if repo, ok := repos[repoHash]; ok {
-				createThumbnailsForFolder(folderHash, nil, repo.EncryptionLevel == 1)
+				createThumbnailsForFolder(folderHash, nil, repo.EncryptionLevel == 1, nil, nil, nil)
 			}
 		}
 	}

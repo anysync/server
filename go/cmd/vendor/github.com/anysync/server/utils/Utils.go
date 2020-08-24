@@ -203,18 +203,38 @@ func CopyRealFileInfo(f *RealFileInfo) *RealFileInfo {
 }
 
 func NewRealFileInfo(f FileInfo, absPath string) *RealFileInfo {
-	p := fromFileInfo(f)
-	if p == 0 {
-		return nil
-	}
 	fi := new(RealFileInfo)
-	fi.Name = f.Name()
-	fi.Size = f.Size()
+	isSym := IsSymlink(f)
 	fi.IsDir = f.IsDir()
 	fi.IsFile = f.Mode().IsRegular()
-	fi.Permission = p
-	fi.IsSymlink = IsSymlink(f)
+	fi.IsSymlink = isSym
+	fi.Name = f.Name()
+	fi.Size = f.Size()
 	fi.AbsPath = absPath
+
+	if isSym{
+		if s, e := os.Readlink(absPath ); e == nil{
+			if fn, err := GetFileInfo(s); err == nil{
+				fi.Permission = fromFileInfo(fn)
+				if(fi.Permission == 0){
+					return nil
+				}
+				fi.IsDir = fn.IsDir()
+				fi.IsFile = fn.Mode().IsRegular()
+				fi.Size = fn.Size()
+			}else{
+				return nil
+			}
+		}else{
+			return nil
+		}
+	}else {
+		p := fromFileInfo(f)
+		fi.Permission = p
+		if p == 0 {
+			return nil
+		}
+	}
 
 	if t, err := times.Stat(absPath); err == nil {
 		fi.LastModified = uint32(t.ModTime().Unix()) // uint32(f.ModTime().Unix());
@@ -376,11 +396,11 @@ func GetDisplayFileName(fileName string)string{
 					if (bs != nil) {
 						return string(bs)
 					} else {
-						fmt.Println("Cannot decrypt. Error: ", err)
+						Warn("Cannot decrypt. Error: ", err)
 						return ""
 					}
 				}else{
-					fmt.Println("No share key")
+					Warn("No share key")
 					return ""
 				}
 			}else {
@@ -398,7 +418,7 @@ func GetDisplayFileName(fileName string)string{
 			}
 			return prefix + fileName;
 		}else{
-			fmt.Println("Cannot be unmarshalled: ", fileName)
+			Warn("Cannot be unmarshalled: ", fileName)
 		}
 	}
 	return fileName;
@@ -1122,6 +1142,9 @@ type CloudPath struct{
 func DecodePath(path string) * CloudPath{
 	//ret := make(map[string]string)
 	cp := new(CloudPath)
+	if path == ""{
+		return cp;
+	}
 	c := path[0]
 	cp.Encrypted = c=='1'
 	c = path[1]

@@ -1152,7 +1152,6 @@ func doCheckFolder(i interface{}){
 		}
 		for _, fileInfo := range fis {
 			fileName := fileInfo.Name()
-			//path := filepath.Join(srcAbsPath, fileName)
 			if fileName == "." || fileName == ".." || !FilterFile(currentRelativePath+"/"+fileInfo.Name(), fileInfo) {
 				continue
 			}
@@ -1246,6 +1245,7 @@ func  checkFolderChanges(p *ants.PoolWithFunc, wg * sync.WaitGroup, changedDirs,
 				if  changed || row.FileSize != fileInfo.Size {
 					if _, f := changedDirs.Load(srcAbsPath); !f {
 						if(storeFiles){
+
 							changedDirs.Store(filepath.Join(srcAbsPath , fileInfo.Name), false)
 						}else {
 							changedDirs.Store(srcAbsPath, false)

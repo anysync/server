@@ -121,11 +121,14 @@ func CompressAndUpload(srcFile string, fileMeta *utils.FileMeta, deletes  *syncm
 
 var compressMutex = utils.NewKmutext();// &sync.Mutex{}
 
+func compressDone(hash string) {
+	compressMutex.Unlock(hash)
+}
 func doCompressAndUpload(i interface{})  {
 	j := i.(CompressJob)
 	hash := j.fileMeta.GetFileHash()
 	compressMutex.Lock(hash)
-	defer compressMutex.Unlock(hash)
+	defer compressDone(hash)
 
 	hashPath := utils.HashToPath(j.fileMeta.GetFileHash())
 	finished := 0
@@ -137,12 +140,12 @@ func doCompressAndUpload(i interface{})  {
 		if(len(j.ownerUserID) > 0){
 			h = j.fileMeta.GetFolderHash() + utils.DAT_SEPERATOR + h;
 		}
-		j.objects.Store(h, j.fileMeta)
-		utils.Debug("doCompressAndUpload.Already processed...", hash, "; src:", j.srcFile)
+		if(j.objects != nil) {
+			j.objects.Store(h, j.fileMeta)
+		}
 		return
 	}
 
-	utils.Debug("Enter doCompressAndUpload, fileHash: ", j.fileMeta.GetFileHash())
 	encrypt := j.fileMeta.GetRepository().EncryptionLevel == 1
 	if(j.skipEncrypt){ encrypt = false}
 	for _, remote := range j.fileMeta.GetRepository().Remote {

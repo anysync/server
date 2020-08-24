@@ -533,6 +533,7 @@ func GetServerConfigDir() (string, error) {
 	return configDirLocation, nil
 }
 
+//Return false to tell caller to update rate limit
 func SaveConfigFile(conf  * Config, file string)bool{
 	config := CloneObject(*conf).(Config);//new ( Config );
 	buf := new(bytes.Buffer)
@@ -551,15 +552,12 @@ func SaveConfigFile(conf  * Config, file string)bool{
 	if(!skip) {
 		config.UpdateProxy()
 	}
-	if(oldConfig != nil && oldConfig.ThreadCount == config.ThreadCount){
-		skip = true;
-	}
 
-	skip = false;
+	ret := false;
 	if(oldConfig != nil && oldConfig.RateLimit == config.RateLimit){
-		skip = true;
+		ret = true;
 	}
-	return skip;
+	return ret;
 }
 
 var CurrentConfig * Config;

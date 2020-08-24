@@ -52,10 +52,8 @@ func (rescan Rescan) uploadToCloud(repo * utils.Repository, clientChanges []*uti
 			}
 
 		}
-		if hasImage && createThumbnailsForFolder(folder.FolderHash, folder, repo.EncryptionLevel == 1) {
-			if fp, e := uploadThumbnail(repo, folder.FolderHash, deletes ); e == nil {
-				objects.Store(folder.FolderHash, fp)
-			}
+		if hasImage  {
+			go createThumbnailsForFolder(folder.FolderHash, folder, repo.EncryptionLevel == 1, repo, objects, deletes  )
 			folder.HasThumbnail = true;
 		}
 	}
@@ -264,7 +262,9 @@ func IsImageFile(fileName string, byName bool) bool{
 	return false;
 }
 
-func createThumbnailsForFolder(folderHash string,folder *utils.ModifiedFolderExt, toEncrypt bool)bool{
+func createThumbnailsForFolder(folderHash string,folder *utils.ModifiedFolderExt, toEncrypt bool, repo * utils.Repository, objects *syncmap.Map, deletes  *syncmap.Map)bool{
+	compressWait.Add(1)
+	defer compressWait.Done()
 	destFile := utils.GetTopObjectsFolder() + utils.HashToPath(folderHash) + utils.EXT_OBJ
 	size1 := utils.FileSize(destFile);
 	utils.RemoveFile(destFile)
@@ -276,7 +276,7 @@ func createThumbnailsForFolder(folderHash string,folder *utils.ModifiedFolderExt
 	for _, row := range rows{
 		if fileName, foundKey := utils.DbGetStringValue(row.FileNameKey, true) ; foundKey{
 			if IsImageFile(fileName, true) {
-				utils.Debug("To create thumbnail for ", fileName)
+				//utils.Debug("To create thumbnail for ", fileName)
 				appendThumbnailForRow(folderPath + "/" + fileName, folderHash, row.ToHashString(), toEncrypt)
 			}
 
@@ -288,7 +288,7 @@ func createThumbnailsForFolder(folderHash string,folder *utils.ModifiedFolderExt
 			indexBinRow.ReadBytes(row.Row, 0)
 			fileName := utils.GetDisplayFileName(row.FileName);
 			if IsImageFile(fileName, true) {
-				utils.Debug("To create thumbnail for ", fileName, "; absFolderPath:", folder.AbsPath)
+				//utils.Debug("To create thumbnail for ", fileName, "; absFolderPath:", folder.AbsPath)
 				appendThumbnailForRow(folder.AbsPath + "/" + fileName, folderHash, indexBinRow.ToHashString(), toEncrypt)
 
 			}
@@ -298,6 +298,11 @@ func createThumbnailsForFolder(folderHash string,folder *utils.ModifiedFolderExt
 	size2 := utils.FileSize(destFile)
 	utils.Debug("Leave createThumbnailsForFolder:", folderHash,"; oldsize:", size1, "; destfile filesize:", size2)
 	if(size2 > 0 && size2 != size1){
+		if repo != nil {
+			if fp, e := uploadThumbnail(repo, folder.FolderHash, deletes); e == nil {
+				objects.Store(folder.FolderHash, fp)
+			}
+		}
 		return true;
 	}else {
 		return false;

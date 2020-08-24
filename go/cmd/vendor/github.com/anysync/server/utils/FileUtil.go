@@ -590,7 +590,7 @@ func RemoveEmptySubfolders(topPath string){
 
 func RemoveEmptyFolders(absPath string, upLevel int) {
 	if IsFolderEmpty(absPath) {
-		Debugf("Local is empty : %s. To remove it.\n", absPath)
+		//Debugf("Local is empty : %s. To remove it.\n", absPath)
 		RemoveFile(absPath)
 		path := RemoveLastPathComponent(absPath)
 		upLevel--
