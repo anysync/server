@@ -1389,7 +1389,7 @@ func (f *Fs) list(ctx context.Context, bucket, directory, prefix string, addBuck
 	var err error;
 	utils.IterateDatObject(func(key []byte, meta *utils.FileMeta) bool {
 		var remote string;
-		if(meta == nil){
+		if(meta == nil || meta.P == ""){
 			return true;
 		}
 		o  := &s3.Object{}
